@@ -4,10 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"encoding/csv"
+	"fmt"
 	dbconn "learn-go-db/db"
 	"log"
 	"os"
+	"path/filepath"
 	"strconv"
+	"time"
 )
 
 type Customer struct {
@@ -56,17 +59,36 @@ func GetData() [][]string {
 func main() {
 	customer := GetData()
 
+	path, err := os.Getwd()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("Path:", path)
+
 	csvFile, err := os.Create("customers.csv")
 
 	if err != nil {
 		log.Fatalf("failed creating file: %s", err)
 	}
-	defer csvFile.Close()
 
 	w := csv.NewWriter(csvFile)
 	w.WriteAll(customer)
 
 	if err := w.Error(); err != nil {
 		log.Fatalln("error writing csv:", err)
+	}
+
+	defer csvFile.Close()
+
+	if err := csvFile.Close(); err != nil {
+		panic(err)
+	}
+
+	pathFile := filepath.Join(path, csvFile.Name())
+	fmt.Println(pathFile)
+
+	time.Sleep(2 * time.Second)
+	if err := os.Remove(pathFile); err != nil {
+		panic(err)
 	}
 }

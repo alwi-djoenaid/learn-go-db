@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	dbconn "learn-go-db/db"
+	"strconv"
 	"testing"
 )
 
@@ -104,7 +105,7 @@ func TestAutoIncrement(t *testing.T) {
 	email := "alwi@email.com"
 
 	ctx := context.Background()
-	query := "INSERT INTO commentss(email,  comment) values ($1, $2) returning id"
+	query := "INSERT INTO comments(email,  comment) values ($1, $2) returning id"
 
 	var lastInsertId int
 	res := db.QueryRowContext(ctx, query, comment, email)
@@ -115,4 +116,71 @@ func TestAutoIncrement(t *testing.T) {
 
 	res.Scan(&lastInsertId)
 	fmt.Println(lastInsertId)
+}
+
+func TestPrepareStatement(t *testing.T) {
+	db := dbconn.GetConnection()
+	defer db.Close()
+
+	ctx := context.Background()
+	query := "INSERT INTO comments(email,  comment) values ($1, $2) returning id"
+
+	statement, err := db.PrepareContext(ctx, query)
+	if err != nil {
+		panic(err)
+	}
+
+	defer statement.Close()
+
+	for i := 0; i < 10; i++ {
+		email := "alwi" + strconv.Itoa(i) + "email.com"
+		comment := "comment ke " + strconv.Itoa(i)
+
+		res, err := statement.ExecContext(ctx, email, comment)
+		if err != nil {
+			panic(err)
+		}
+
+		lastId, err := res.LastInsertId()
+		if err != nil {
+			panic(err)
+		}
+
+		fmt.Println("res", lastId)
+	}
+}
+
+func TestTransaction(t *testing.T) {
+	db := dbconn.GetConnection()
+	defer db.Close()
+
+	ctx := context.Background()
+	tx, err := db.Begin()
+	if err != nil {
+		panic(err)
+	}
+
+	query := "INSERT INTO comments(email,  comment) values ($1, $2) returning id"
+
+	for i := 0; i < 10; i++ {
+		email := "alwi" + strconv.Itoa(i) + "@email.com"
+		comment := "comment ke " + strconv.Itoa(i)
+
+		res, err := tx.ExecContext(ctx, query, email, comment)
+		if err != nil {
+			panic(err)
+		}
+
+		// lastId, err := res.LastInsertId()
+		// if err != nil {
+		// 	panic(err)
+		// }
+
+		fmt.Println("res", res)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		panic(err)
+	}
 }
